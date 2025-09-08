@@ -5,6 +5,8 @@
 
 int main()
 {
-	
+	int board[30][30]{};
+
+
 
 }
