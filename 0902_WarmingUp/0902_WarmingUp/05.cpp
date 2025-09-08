@@ -1,8 +1,7 @@
 #include <iostream>
-#include <fstream>
 #include <stdlib.h>
-#include <Windows.h>
 #include <vector>
+#include <Windows.h>
 
 #define BOARD_SIZE 30
 
@@ -42,51 +41,48 @@ int main()
 		for (int i{}; i < rect1.x2 - rect1.x1; i++) {
 			for (int j{}; j < rect1.y2 - rect1.y1; j++) {
 
-				if (rect1.x1 + i > -1 and rect1.x1 + i < board.size() and rect1.y1 + j > -1 and rect1.y1 + j < board[i].size()) {
-					board[rect1.x1 + i][rect1.y1 + j] += 1;
-				}
-				else {
-					int rx{}, ry{};
-					if (rect1.x1 + i < 0) rx = rect1.x1 + i + (BOARD_SIZE + add_board - 1);
-					else if (rect1.x1 + i >= BOARD_SIZE + add_board) rx = rect1.x1 + i - (BOARD_SIZE + add_board);
+				int rx{}, ry{};
+				if (rect1.x1 + i < 0) rx = rect1.x1 + i + (BOARD_SIZE + add_board);
+				else if (rect1.x1 + i >= BOARD_SIZE + add_board) rx = rect1.x1 + i - (BOARD_SIZE + add_board);
+				else rx = rect1.x1 + i;
 
-					if (rect1.y1 + j < 0) ry = rect1.y1 + j + (BOARD_SIZE + add_board - 1);
-					else if (rect1.y1 + j >= BOARD_SIZE + add_board) ry = rect1.y1 + j - (BOARD_SIZE + add_board);
+				if (rect1.y1 + j < 0) ry = rect1.y1 + j + (BOARD_SIZE + add_board);
+				else if (rect1.y1 + j >= BOARD_SIZE + add_board) ry = rect1.y1 + j - (BOARD_SIZE + add_board);
+				else ry = rect1.y1 + j;
 
-					board[rx][ry] += 1;
-				}
+				board[ry][rx] += 1;
 			}
 		}
 		for (int i{}; i < rect2.x2 - rect2.x1; i++) {
 			for (int j{}; j < rect2.y2 - rect2.y1; j++) {
 				
+				int rx{}, ry{};
+				if (rect2.x1 + i < 0) rx = rect2.x1 + i + (BOARD_SIZE + add_board);
+				else if (rect2.x1 + i >= BOARD_SIZE + add_board) rx = rect2.x1 + i - (BOARD_SIZE + add_board);
+				else rx = rect2.x1 + i;
 
-				/*if (rect2.x1 + i < board.size() and rect2.y1 + j < board[i].size()) {
-					board[rect2.x1 + i][rect2.y1 + j] += 2;
-				}
-				else {
-					int rx{}, ry{};
-					if (rect2.x1 + i < 0) rx = rect2.x1 + i + (BOARD_SIZE + add_board);
-					else if (rect2.x1 + i >= BOARD_SIZE + add_board) rx = rect2.x1 + i - (BOARD_SIZE + add_board);
+				if (rect2.y1 + j < 0) ry = rect2.y1 + j + (BOARD_SIZE + add_board);
+				else if (rect2.y1 + j >= BOARD_SIZE + add_board) ry = rect2.y1 + j - (BOARD_SIZE + add_board);
+				else ry = rect2.y1 + j;
 
-					if (rect2.y1 + j < 0) ry = rect2.y1 + j + (BOARD_SIZE + add_board);
-					else if (rect2.y1 + j >= BOARD_SIZE + add_board) ry = rect2.y1 + j - (BOARD_SIZE + add_board);
+				board[ry][rx] += 2;
 
-					board[rx][ry] += 2;
-				}*/
 			}
 		}
 
 		for (int i{}; i < board.size(); i++) {
 			for (int j{}; j < board[i].size(); j++) {
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
 				if (board[i][j] == 0)
 					cout << ". ";
 				else if (board[i][j] == 1)
 					cout << "0 ";
 				else if (board[i][j] == 2)
 					cout << "X ";
-				else if (board[i][j] == 3)
-					cout << "@ ";
+				else if (board[i][j] == 3) {
+					SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+					cout << "# ";
+				}
 			}
 			cout << endl;
 		}
@@ -165,7 +161,7 @@ int main()
 				}
 			}
 			else {
-				if (rect1.x2 - rect1.x1 and rect1.y2 - rect1.y1 < BOARD_SIZE + add_board) {
+				if (rect1.x2 - rect1.x1 > 1 and rect1.y2 - rect1.y1 < BOARD_SIZE + add_board) {
 					rect1.x2--;
 					rect1.y2++;
 				}
