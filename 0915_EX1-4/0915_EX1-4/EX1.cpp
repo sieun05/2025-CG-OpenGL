@@ -1,16 +1,8 @@
-#include <iostream>
-#include <random>
-#include <gl/glew.h>
-#include <gl/freeglut.h>
-#include <gl/freeglut_ext.h>
-
-//윈도우 좌표값 -> 오픈지엘 좌표값(-1~ 1, y 위쪽이 양의방향)으로 바꾸는 함수 만들어서 학기내내 사용
+#include "head.h"
 
 //#include <gl/glm/glm.hpp>
 //#include <gl/glm/>
 //#include <gl/glm/gtc/matrix_transform.hpp>
-
-using namespace std;
 
 random_device rd;
 mt19937 gen(rd());
