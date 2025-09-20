@@ -27,11 +27,7 @@ struct Rect {
 			float x_max_size = r.x_size + x_size;
 			float y_max_size = r.y_size + y_size;
 
-			if (abs(x - r.x) < x_max_size and abs(y - r.y) < y_max_size or
-				abs(x - r.x) < x_max_size and abs(y - r.y) < y_max_size or
-				abs(x - r.x) < x_max_size and abs(y - r.y) < y_max_size or
-				abs(x - r.x) < x_max_size and abs(y - r.y) < y_max_size) {
-
+			if (abs(x - r.x) < x_max_size and abs(y - r.y) < y_max_size) {
 				return i;
 			}
 		}

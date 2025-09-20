@@ -139,6 +139,7 @@
     <ClCompile Include="EX3.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="EX4.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="head.h" />
