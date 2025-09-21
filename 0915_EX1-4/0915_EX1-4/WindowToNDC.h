@@ -1,8 +1,6 @@
 #pragma once
 #include "head.h"
 
-struct Vec2 { float x, y; };
-
 // winX, winY : 윈도우(또는 프레임버퍼) 기준 픽셀 좌표 (원점: 좌상단)
 // pixelCenter : 픽셀 센터를 맞추려면 true (마우스 클릭 지점이 픽셀 중앙에 매핑됨)
 Vec2 WindowToNDC(int winX, int winY, bool pixelCenter = true) {
