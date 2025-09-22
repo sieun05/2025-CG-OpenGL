@@ -49,6 +49,7 @@ struct Rect {
 	Vec2 init_pos;
 	Direction dir;
 	float speed;
+	int y_move_delay{ 0 };
 
 	Vec2 prev_pos;
 	Direction prev_dir;
@@ -284,9 +285,16 @@ GLvoid TimerFunction(int value)
 
 			r.x += r.dir.dx * r.speed;
 			if (r.x - r.x_size <= -1) {
-				r.dir.dx = 1;
+				r.y_move_delay++;
+				
+				if (r.y_move_delay > 6) {
+					r.dir.dx = 1;
+					r.y_move_delay = 0;
+					break;
+				}
 
-				r.y += r.dir.dy * r.y_size;
+				r.x -= r.dir.dx * r.speed;
+				r.y += r.dir.dy * r.speed;
 
 				if(r.y - r.y_size <= -1) {
 					r.dir.dy = 1;
@@ -296,9 +304,16 @@ GLvoid TimerFunction(int value)
 				}
 			}
 			if (r.x + r.x_size >= 1) {
-				r.dir.dx = -1;
+				r.y_move_delay++;
 
-				r.y += r.dir.dy * r.y_size;
+				if (r.y_move_delay > 6) {
+					r.dir.dx = -1;
+					r.y_move_delay = 0;
+					break;
+				}
+
+				r.x -= r.dir.dx * r.speed;
+				r.y += r.dir.dy * r.speed;
 
 				if (r.y - r.y_size <= -1) {
 					r.dir.dy = 1;
