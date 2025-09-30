@@ -26,3 +26,4 @@ uniform_real_distribution<float> r_float3(0.05, 0.2);
 uniform_real_distribution<float> r_float4(0.005, 0.01);
 uniform_int_distribution<int> r_bool(0, 1);
 uniform_int_distribution<int> r_int_0_100(0, 100);
+uniform_int_distribution<int> r_int_1_4(1, 4);
