@@ -346,5 +346,5 @@ GLvoid TimerFunction(int value)
 	if (delay_time > 4) delay_time = 0;
 
 	glutPostRedisplay();
-	glutTimerFunc(50, TimerFunction, 1);
+	glutTimerFunc(10, TimerFunction, 1);
 }
