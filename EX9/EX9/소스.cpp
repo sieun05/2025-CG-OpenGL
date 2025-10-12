@@ -252,7 +252,6 @@ GLvoid drawScene()
 	glutSwapBuffers();
 }
 
-
 //--- 다시그리기콜백함수
 GLvoid Reshape(int w, int h)
 {
