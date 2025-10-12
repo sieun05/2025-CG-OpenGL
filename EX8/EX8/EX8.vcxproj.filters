@@ -18,6 +18,9 @@
     <ClInclude Include="헤더.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="WindowToNDC.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="소스.cpp">
