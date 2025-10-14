@@ -150,7 +150,6 @@ void createRectangle(Vec2 pos) {
 	shapes.push_back(shape);
 }
 
-//--- 도형 선택 함수 수정필요해보임 크기별로 고려해서 체크해야하지 않나?
 int findShapeAtPosition(Vec2 pos) {
 	for (int i = shapes.size() - 1; i >= 0; i--) {
 		if (!shapes[i].active) continue;
