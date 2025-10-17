@@ -72,7 +72,7 @@ void InitBuffer()
 	glEnable(GL_DEPTH_TEST); // 깊이버퍼 활성화
 	InitAxesBuffer();        // 좌표축 초기화
 	InitCubeBuffer();        // 정육면체 초기화
-	InitPyramidBuffer();     // 삼각뿔 초기화
+	//InitPyramidBuffer();     // 삼각뿔 초기화
 }
 
 //--- 출력 콜백함수
@@ -101,7 +101,7 @@ GLvoid drawScene()
 
 	DrawAxes();  // 좌표축 그리기
 	if(drawCube)	DrawCube();  // 정육면체 그리기
-	if(drawPyramid)	DrawPyramid(); // 삼각뿔 그리기
+	//if(drawPyramid)	DrawPyramid(); // 삼각뿔 그리기
 
 	glutSwapBuffers();
 }
@@ -131,48 +131,7 @@ GLvoid Reshape(int w, int h)
 GLvoid Keyboard(unsigned char key, int x, int y)
 {
 	switch (key) {
-	case '0':
-	case '1':
-	case '2':
-	case '3':
-	case '4':
-	case '5':
-		drawCube = true;
-		drawPyramid = false;
-		randomCube = false;
-		cubeFace = (int)(key - '0');
-		break;
-	case 'r':
-		drawCube = true;
-		cubeFace = 6; // 전체 면
-		break;
-	case 'c':
-		while (true) {
-			randomFace[0] = Cube_face_dis(gen);
-			randomFace[1] = Cube_face_dis(gen);
-			if (randomFace[0] != randomFace[1])
-				break;
-		}
-		drawCube = true;
-		drawPyramid = false;
-		randomCube = true;
-		break;
-	case '6':
-	case '7':
-	case '8':
-	case '9':
-		drawCube = false;
-		drawPyramid = true;
-		randomPyramid = false;
-
-		pyramidFace = (int)(key - '0') - 6;
-		break;
-	case 't':
-		drawCube = false;
-		drawPyramid = true;
-		randomPyramid = true;
-		randomPyramidFace = Pyramid_face_dis(gen); // 0~3
-		break;
+	
 	case 'q':
 	case 'Q':
 		exit(0);
