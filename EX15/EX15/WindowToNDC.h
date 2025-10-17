@@ -1,8 +1,7 @@
 #pragma once
-#include <gl/glew.h>
+#include "헤더.h"
 
-using namespace std;
-
+// Vec2 구조체 정의 (RGBA는 CommonHeaders.h에 있음)
 struct Vec2 { float x, y; };
 
 // winX, winY : 윈도우(또는 프레임버퍼) 기준 픽셀 좌표 (원점: 좌상단)

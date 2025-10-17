@@ -1,4 +1,10 @@
 #include "헤더.h"
+#include "WindowToNDC.h"
+#include "shader_func.h"
+#include "Axes.h"
+#include "Cube.h"
+#include "Pyramid.h"
+#include "Random.h"
 
 void InitBuffer();
 
@@ -7,72 +13,12 @@ GLvoid Reshape(int w, int h);
 GLvoid Keyboard(unsigned char key, int x, int y);
 GLvoid Timer(int value);
 
+// 전역 변수 정의 (CommonHeaders.h에서 extern으로 선언된 것들)
+// shaderProgramID는 shader_func.h에서 이미 정의됨
 glm::mat4 gProjection(1.0f);
 glm::mat4 gView(1.0f);
 glm::mat4 gModel(1.0f);
-
 GLint uMVP_loc = -1;
-
-GLuint VAO_axes = 0, VBO_axes[2] = { 0, };
-void InitAxesBuffer() {
-	const float L = 2.0f;
-
-	// [x,y,z, r,g,b] * 6개 정점 (GL_LINES이므로 2개 = 1개 선분)
-	const float axes_vertices[] = {
-		// X axis (red)
-		-L, 0.0f, 0.0f,   
-		 L, 0.0f, 0.0f,   
-
-		 // Y axis (blue)
-		  0.0f, -L, 0.0f, 
-		  0.0f,  L, 0.0f, 
-
-		  // Z axis (green
-		   0.0f, 0.0f, -L,
-		   0.0f, 0.0f,  L,
-	};
-
-	const float axes_colors[] = {
-		// X axis (red)
-		1.0f, 0.0f, 0.0f, // start point
-		1.0f, 0.0f, 0.0f, // end point
-
-		// Y axis (blue)
-		0.0f, 0.0f, 1.0f, // start point
-		0.0f, 0.0f, 1.0f, // end point
-
-		// Z axis (green)
-		0.0f, 1.0f, 0.0f, // start point
-		0.0f, 1.0f, 0.0f, // end point
-	};
-
-	glGenVertexArrays(1, &VAO_axes);
-	glBindVertexArray(VAO_axes);
-
-	glGenBuffers(2, VBO_axes);
-
-	// positions -> location=0
-	glBindBuffer(GL_ARRAY_BUFFER, VBO_axes[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(axes_vertices), axes_vertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-	// colors -> location=1
-	glBindBuffer(GL_ARRAY_BUFFER, VBO_axes[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(axes_colors), axes_colors, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-}
-void DrawAxes()
-{
-	glBindVertexArray(VAO_axes);
-	glLineWidth(3.0f);
-	glDrawArrays(GL_LINES, 0, 6); // 6개의 정점 = 3개의 선분
-	glBindVertexArray(0);
-}
 
 void AfterMakeShaders() 
 {
@@ -105,10 +51,10 @@ void main(int argc, char** argv)
 	make_vertexShaders();
 	make_fragmentShaders();
 	shaderProgramID = make_shaderProgram();
-	AfterMakeShaders();	//uniform?
+	AfterMakeShaders();	//셰이더에서 uniform 변수 위치 얻기
 
-	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
+	glutDisplayFunc(drawScene);
 	glutKeyboardFunc(Keyboard);
 	glutTimerFunc(16, Timer, 1); // 약 60FPS로 타이머 시작
 
@@ -124,7 +70,9 @@ GLvoid Timer(int value)
 void InitBuffer()
 {
 	glEnable(GL_DEPTH_TEST); // 깊이버퍼 활성화
-	InitAxesBuffer();
+	InitAxesBuffer();        // 좌표축 초기화
+	InitCubeBuffer();        // 정육면체 초기화
+	InitPyramidBuffer();     // 삼각뿔 초기화
 }
 
 //--- 출력 콜백함수
@@ -136,18 +84,24 @@ GLvoid drawScene()
 	//--- 렌더링 파이프라인에 세이더 불러오기
 	glUseProgram(shaderProgramID);
 
-	// --- View: 카메라 살짝 뒤로
-	gView = glm::translate(gView, glm::vec3(0, 0, -4.0f));
+	// --- View: 카메라를 뒤쪽 위쪽에서 원점을 바라보도록 설정
+	gView = glm::mat4(1.0f);
+	gView = glm::lookAt(		//카메라 외부파라미터
+		glm::vec3(3.0f, 2.0f, 3.0f),  // 카메라 위치 (x, y, z축이 모두 보이는 위치)	EYE
+		glm::vec3(0.0f, 0.0f, 0.0f),  // 바라보는 지점 (원점) 						AT
+		glm::vec3(0.0f, 1.0f, 0.0f)   // 위쪽 방향 벡터 					 		UP
+	);
 
-	// --- Model: 등각 회전 (X 35.264°, Y 45°)
+	// --- Model: 단위 행렬 (좌표축 자체는 회전시키지 않음)
 	gModel = glm::mat4(1.0f);
-	gModel = glm::rotate(gModel, glm::radians(35.264f), glm::vec3(1, 0, 0));
-	gModel = glm::rotate(gModel, glm::radians(45.0f), glm::vec3(0, 1, 0));
 
-	// --- 최종 MVP
+	// --- 최종 MVP 계산 및 셰이더에 전달
 	glm::mat4 MVP = gProjection * gView * gModel;
+	glUniformMatrix4fv(uMVP_loc, 1, GL_FALSE, glm::value_ptr(MVP));
 
-	DrawAxes();
+	DrawAxes();  // 좌표축 그리기
+	if(drawCube)	DrawCube();  // 정육면체 그리기
+	if(drawPyramid)	DrawPyramid(); // 삼각뿔 그리기
 
 	glutSwapBuffers();
 }
@@ -159,15 +113,15 @@ GLvoid Reshape(int w, int h)
 
 	glUseProgram(shaderProgramID);
 
-	float viewHalf = 3.0f;
-
 	float aspect = (h == 0) ? 1 : (float)w / (float)h;
-	float left = -viewHalf * aspect;
-	float right = viewHalf * aspect;
-	float bottom = -viewHalf;
-	float top = viewHalf;
-
-	gProjection = glm::ortho(left, right, bottom, top, -50.0f, 50.0f);
+	
+	// 원근 투영 사용 (3D 효과를 더 잘 보여줌)
+	gProjection = glm::perspective(
+		glm::radians(45.0f),  // 시야각 45도	fovy
+		aspect,               // 종횡비			aspect
+		0.1f,                 // 근평면			-n
+		100.0f                // 원평면			-f
+	);
 
 	glUseProgram(0);
 
@@ -177,10 +131,53 @@ GLvoid Reshape(int w, int h)
 GLvoid Keyboard(unsigned char key, int x, int y)
 {
 	switch (key) {
-	
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+		drawCube = true;
+		drawPyramid = false;
+		randomCube = false;
+		cubeFace = (int)(key - '0');
+		break;
+	case 'r':
+		drawCube = true;
+		cubeFace = 6; // 전체 면
+		break;
+	case 'c':
+		while (true) {
+			randomFace[0] = Cube_face_dis(gen);
+			randomFace[1] = Cube_face_dis(gen);
+			if (randomFace[0] != randomFace[1])
+				break;
+		}
+		drawCube = true;
+		drawPyramid = false;
+		randomCube = true;
+		break;
+	case '6':
+	case '7':
+	case '8':
+	case '9':
+		drawCube = false;
+		drawPyramid = true;
+		randomPyramid = false;
+
+		pyramidFace = (int)(key - '0') - 6;
+		break;
+	case 't':
+		drawCube = false;
+		drawPyramid = true;
+		randomPyramid = true;
+		randomPyramidFace = Pyramid_face_dis(gen); // 0~3
+		break;
 	case 'q':
 	case 'Q':
 		exit(0);
 		break;
 	}
+
+	glutPostRedisplay();
 }

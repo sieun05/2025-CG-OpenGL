@@ -18,15 +18,36 @@
     <ClCompile Include="소스.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Axes.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Cube.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Pyramid.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="헤더.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="WindowToNDC.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="shader_func.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="헤더.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Axes.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Cube.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Random.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Pyramid.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

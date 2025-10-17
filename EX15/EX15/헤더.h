@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <iostream>
 #include <vector>
-#include <random>
 #include <cmath>
 
 #include <gl/glew.h>
@@ -15,10 +14,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "WindowToNDC.h"
-#include "shader_func.h"
-
 using namespace std;
 
-//struct Vec2 { float x, y; };
+// 공통 구조체 및 타입 정의
 struct RGBA { float r, g, b, a; };
+
+// 전역 변수 선언 (shaderProgramID는 shader_func.h에서 정의됨)
+extern glm::mat4 gProjection;
+extern glm::mat4 gView;
+extern glm::mat4 gModel;
+extern GLint uMVP_loc;

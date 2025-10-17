@@ -92,7 +92,7 @@ void make_fragmentShaders()
 GLuint make_shaderProgram()
 {
 	GLint result;
-	GLchar errorLog[512]; // 이 부분을 배열로 변경
+	GLchar errorLog[512];
 	GLuint shaderID;
 	shaderID = glCreateProgram();
 
