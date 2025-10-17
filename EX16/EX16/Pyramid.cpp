@@ -1,3 +1,4 @@
+#include <iostream>
 #include "Pyramid.h"
 
 // 사각뿔 관련 전역 변수 정의
@@ -6,10 +7,8 @@ GLuint VBO_Pyramid[2] = { 0, };
 GLuint EBO_Pyramid = 0;
 
 // 사각뿔 그리기 제어 변수
-bool drawPyramid = true;
-int pyramidFace = 5; // 0~3: 각 면, 4: 밑면, 5: 전체 면
-bool randomPyramid = false;
-int randomPyramidFace{};
+bool drawPyramid = false;
+bool PyramidWireDraw = false;
 
 void InitPyramidBuffer()
 {
@@ -17,69 +16,28 @@ void InitPyramidBuffer()
 
     const float Pyramid_vertices[] = {
         // 밑면 (사각형) - 4개 정점
-        -size, -size, -size,  // 0: 왼쪽 뒤
-        -size, -size,  size,  // 1: 왼쪽 앞
-         size, -size,  size,  // 2: 오른쪽 앞
-         size, -size, -size,  // 3: 오른쪽 뒤
+        0,      size,   0,  // 0: 왼쪽 뒤
+        -size,  -size,  -size,  // 0: 왼쪽 뒤
+        -size,  -size,   size,  // 0: 왼쪽 뒤
+         size,  -size,   size,  // 0: 왼쪽 뒤
+         size,  -size,  -size,  // 0: 왼쪽 뒤
 
-        // 앞면 삼각형 (z = +size) - 3개 정점
-        -size, -size,  size,  // 4: 왼쪽 앞
-         size, -size,  size,  // 5: 오른쪽 앞  
-         0.0f,  size,  0.0f,  // 6: 꼭짓점
-
-        // 오른쪽면 삼각형 (x = +size) - 3개 정점
-         size, -size,  size,  // 7: 오른쪽 앞
-         size, -size, -size,  // 8: 오른쪽 뒤
-         0.0f,  size,  0.0f,  // 9: 꼭짓점
-
-        // 뒷면 삼각형 (z = -size) - 3개 정점
-         size, -size, -size,  // 10: 오른쪽 뒤
-        -size, -size, -size,  // 11: 왼쪽 뒤
-         0.0f,  size,  0.0f,  // 12: 꼭짓점
-
-        // 왼쪽면 삼각형 (x = -size) - 3개 정점
-        -size, -size, -size,  // 13: 왼쪽 뒤
-        -size, -size,  size,  // 14: 왼쪽 앞
-         0.0f,  size,  0.0f   // 15: 꼭짓점
     };
 
     const float Pyramid_colors[] = {
-        // 밑면 - 보라색
-        1.0f, 0.0f, 1.0f,  // 0
-        1.0f, 0.0f, 1.0f,  // 1
-        1.0f, 0.0f, 1.0f,  // 2
-        1.0f, 0.0f, 1.0f,  // 3
-
-        // 앞면 - 빨간색
-        1.0f, 0.0f, 0.0f,  // 4
-        1.0f, 0.0f, 0.0f,  // 5
-        1.0f, 0.0f, 0.0f,  // 6
-
-        // 오른쪽면 - 초록색
-        0.0f, 1.0f, 0.0f,  // 7
-        0.0f, 1.0f, 0.0f,  // 8
-        0.0f, 1.0f, 0.0f,  // 9
-
-        // 뒷면 - 파란색
-        0.0f, 0.0f, 1.0f,  // 10
-        0.0f, 0.0f, 1.0f,  // 11
+        1.0f, 0.0f, 0.0f,  // 12
+        0.0f, 1.0f, 0.0f,  // 12
         0.0f, 0.0f, 1.0f,  // 12
-
-        // 왼쪽면 - 노란색
-        1.0f, 1.0f, 0.0f,  // 13
-        1.0f, 1.0f, 0.0f,  // 14
-        1.0f, 1.0f, 0.0f   // 15
+        0.0f, 1.0f, 1.0f,  // 12
+        1.0f, 1.0f, 0.0f,  // 12
     };
 
     const unsigned int Pyramid_indices[] = {
-        // 밑면 (사각형) - 아래에서 올려다봤을 때 반시계방향
-        0, 2, 1,   0, 3, 2,
-
-        // 측면들 - 바깥쪽에서 봤을 때 반시계방향
-        4, 5, 6,    // 앞면
-        7, 8, 9,    // 오른쪽면
-        10, 11, 12, // 뒷면
-        13, 14, 15  // 왼쪽면
+		0, 1, 2,  // 밑면
+        0, 2, 3,  // 밑면
+        0, 3, 4,  // 앞면
+        0, 4, 1,  // 오른쪽 면
+        1, 4, 3, 3, 2, 1
     };
 
     // VAO 생성 및 바인딩
@@ -113,16 +71,15 @@ void InitPyramidBuffer()
 
 void DrawPyramid()
 {
-    if (!drawPyramid) return;
 
     glBindVertexArray(VAO_Pyramid);
-    if (randomPyramid) {
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // 밑면
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, (void*)((randomPyramidFace * 3 + 6) * sizeof(unsigned int))); // 밑면
-    }
-    else if (pyramidFace >= 0 && pyramidFace <= 3) {
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, (void*)((pyramidFace * 3 + 6) * sizeof(unsigned int)));
-    }
-    else glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0); // 18개 인덱스 (6개 삼각형)
+    if(PyramidWireDraw)
+        for (int i = 0; i < 18; i += 3)
+        {
+            glDrawElements(GL_LINE_LOOP, 3, GL_UNSIGNED_INT, (void*)(i * sizeof(unsigned int)));
+        }
+    else
+        glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0); // 18개 인덱스 (6개 삼각형)
+    
     glBindVertexArray(0);
 }
