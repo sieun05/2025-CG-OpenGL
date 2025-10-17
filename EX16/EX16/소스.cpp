@@ -20,12 +20,45 @@ glm::mat4 gView(1.0f);
 glm::mat4 gModel(1.0f);
 GLint uMVP_loc = -1;
 
+// 은면제거 토글 변수
+bool depthTestEnabled = true;
+
+// x축 회전 애니메이션 변수
+float xRotationAngle = 0.0f;
+bool xRotationEnabled = false;
+int xRotationDirection = 1; // 1: 양의 방향, -1: 음의 방향
+
 void AfterMakeShaders() 
 {
 	glUseProgram(shaderProgramID);
 	uMVP_loc = glGetUniformLocation(shaderProgramID, "uMVP");
 	if (uMVP_loc < 0) { printf("uMVP get error\n"); exit(1); }
 	glUseProgram(0);
+}
+
+// x축 회전 애니메이션 업데이트 함수
+void UpdateXRotation()
+{
+	const float rotationSpeed = 2.0f; // 회전 속도 (도/프레임)
+	xRotationAngle += rotationSpeed * xRotationDirection;
+	
+	// 360도를 넘으면 0으로 리셋
+	if (xRotationAngle >= 360.0f) {
+		xRotationAngle -= 360.0f;
+	}
+	else if (xRotationAngle < 0.0f) {
+		xRotationAngle += 360.0f;
+	}
+}
+
+// x축 회전 행렬 적용 함수
+glm::mat4 ApplyXRotation(const glm::mat4& baseModel)
+{
+	glm::mat4 rotationMatrix(1.0f);
+	rotationMatrix = glm::rotate(glm::mat4(1.0f), 
+	glm::radians(xRotationAngle), 
+	glm::vec3(1.0f, 0.0f, 0.0f)); // x축 벡터
+	return baseModel * rotationMatrix;
 }
 
 //--- 메인 함수
@@ -64,6 +97,10 @@ void main(int argc, char** argv)
 
 GLvoid Timer(int value)
 {
+	if (xRotationEnabled) {
+		UpdateXRotation();
+	}
+	glutPostRedisplay();
 	glutTimerFunc(16, Timer, 1); // 약 60FPS로 타이머 시작
 }
 
@@ -81,26 +118,39 @@ GLvoid drawScene()
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		//GL_DEPTH_BUFFER_BIT 깊이에 따른 은면제거
 
-	//--- 렌더링 파이프라인에 세이더 불러오기
+	// 은면제거 상태에 따라 깊이 테스트 활성화/비활성화
+	if (depthTestEnabled) {
+		glEnable(GL_DEPTH_TEST);
+	} else {
+		glDisable(GL_DEPTH_TEST);
+	}
+
+	//--- 렌더링 파이프라인에 세이더 불러우기
 	glUseProgram(shaderProgramID);
 
 	// --- View: 카메라를 뒤쪽 위쪽에서 원점을 바라보도록 설정
 	gView = glm::mat4(1.0f);
 	gView = glm::lookAt(		//카메라 외부파라미터
-		glm::vec3(3.0f, 2.0f, 3.0f),  // 카메라 위치 (x, y, z축이 모두 보이는 위치)	EYE
+		glm::vec3(-1.0f, 2.0f, 3.0f),  // 카메라 위치 (x, y, z축이 모두 보이는 위치)	EYE
 		glm::vec3(0.0f, 0.0f, 0.0f),  // 바라보는 지점 (원점) 						AT
 		glm::vec3(0.0f, 1.0f, 0.0f)   // 위쪽 방향 벡터 					 		UP
 	);
 
-	// --- Model: 단위 행렬 (좌표축 자체는 회전시키지 않음)
-	gModel = glm::mat4(1.0f);
-
-	// --- 최종 MVP 계산 및 셰이더에 전달
-	glm::mat4 MVP = gProjection * gView * gModel;
-	glUniformMatrix4fv(uMVP_loc, 1, GL_FALSE, glm::value_ptr(MVP));
-
+	// 좌표축 그리기 (회전 없이)
+	gModel = glm::mat4(1.0f); // 단위 행렬
+	glm::mat4 MVP_axes = gProjection * gView * gModel;
+	glUniformMatrix4fv(uMVP_loc, 1, GL_FALSE, glm::value_ptr(MVP_axes));
 	DrawAxes();  // 좌표축 그리기
-	if(drawCube)	DrawCube();  // 정육면체 그리기
+
+	// Cube 그리기 (x축 회전 적용)
+	if(drawCube) {
+		gModel = glm::mat4(1.0f);
+		gModel = ApplyXRotation(gModel); // Cube에만 회전 적용
+		glm::mat4 MVP_cube = gProjection * gView * gModel;
+		glUniformMatrix4fv(uMVP_loc, 1, GL_FALSE, glm::value_ptr(MVP_cube));
+		DrawCube();  // 정육면체 그리기
+	}
+	
 	//if(drawPyramid)	DrawPyramid(); // 삼각뿔 그리기
 
 	glutSwapBuffers();
@@ -123,15 +173,54 @@ GLvoid Reshape(int w, int h)
 		100.0f                // 원평면			-f
 	);
 
-	glUseProgram(0);
-
 	glEnable(GL_DEPTH_TEST); // 깊이버퍼 활성화
+	glUseProgram(0);
 }
 
 GLvoid Keyboard(unsigned char key, int x, int y)
 {
 	switch (key) {
-	
+	case 'c':
+		drawCube = true;
+		drawPyramid = false;
+		break;
+	case 'p':
+		drawPyramid = true;
+		drawCube = false;
+		break;
+	case 'h':
+		// 은면제거 토글
+		depthTestEnabled = !depthTestEnabled;
+		printf("은면제거 %s\n", depthTestEnabled ? "활성화" : "비활성화");
+		break;
+	case 'w':
+	case 'W':
+		CubeWireDraw = CubeWireDraw ? false : true;
+		break;
+	case 'x':
+		// x축 양의 방향 회전 시작/정지
+		xRotationEnabled = !xRotationEnabled;
+		if (xRotationEnabled) {
+			xRotationDirection = 1;
+			printf("x축 양의 방향 회전 시작\n");
+		} else {
+			printf("x축 회전 정지\n");
+		}
+		break;
+	case 'X':
+		// x축 음의 방향 회전 시작/정지
+		xRotationEnabled = !xRotationEnabled;
+		if (xRotationEnabled) {
+			xRotationDirection = -1;
+			printf("x축 음의 방향 회전 시작\n");
+		} else {
+			printf("x축 회전 정지\n");
+		}
+		break;
+	case 'y':
+		break;
+	case 'Y':
+		break;
 	case 'q':
 	case 'Q':
 		exit(0);

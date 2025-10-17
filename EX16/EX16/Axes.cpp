@@ -5,7 +5,7 @@ GLuint VAO_axes = 0;
 GLuint VBO_axes[2] = { 0, };
 
 void InitAxesBuffer() {
-	const float L = 1.0f;
+	const float L = 2.0f;
 
 	// [x,y,z] * 6개 정점 (GL_LINES이므로 2개 = 1개 선분)
 	const float axes_vertices[] = {

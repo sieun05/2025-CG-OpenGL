@@ -7,6 +7,7 @@ GLuint EBO_cube = 0;
 
 //정육면체 그리기 T/F, 어떤 면 그릴지
 bool drawCube = true;
+bool CubeWireDraw = false;
 
 void InitCubeBuffer() {
     const float size = 0.5f; // 정육면체 한 변의 절반 길이 (중심이 원점)
@@ -38,12 +39,12 @@ void InitCubeBuffer() {
 
     // 인덱스 배열 (모든 면이 반시계방향으로 정의됨)
     const unsigned int cube_indices[] = {
-	   0, 1, 2, 2, 3, 0,       // 위쪽 면
 	   1, 4, 5, 5, 2, 1,       // 앞쪽 면
-	   2, 5, 6, 6, 3, 2,       // 오른쪽 면
 	   0, 7, 4, 4, 1, 0,       // 왼쪽 면
 	   0, 3, 6, 6, 7, 0,       // 뒤쪽 면
-	   4, 7, 6, 6, 5, 4        // 아래쪽 면
+	   4, 7, 6, 6, 5, 4,        // 아래쪽 면
+       0, 1, 2, 2, 3, 0,       // 위쪽 면
+       2, 5, 6, 6, 3, 2,       // 오른쪽 면
     };
 
     // VAO 생성 및 바인딩
@@ -78,6 +79,13 @@ void InitCubeBuffer() {
 void DrawCube()
 {
     glBindVertexArray(VAO_cube);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0); // 36개 인덱스 (12개 삼각형)
+    if (CubeWireDraw) {
+        for(int i = 0; i < 36; i += 3)
+        {
+            glDrawElements(GL_LINE_LOOP, 3, GL_UNSIGNED_INT, (void*)(i * sizeof(unsigned int)));
+		}
+    }
+    else
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0); // 36개 인덱스 (12개 삼각형)
     glBindVertexArray(0);
 }
