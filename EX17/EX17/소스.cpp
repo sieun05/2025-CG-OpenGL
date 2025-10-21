@@ -77,7 +77,7 @@ void main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH );		//GLUT_DEPTH 깊이에 따른 은면제거
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(width, height);
-	glutCreateWindow("Example15");
+	glutCreateWindow("Example17");
 
 	//--- GLEW 초기화하기
 	glewExperimental = GL_TRUE;

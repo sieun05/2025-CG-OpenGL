@@ -117,7 +117,7 @@ void main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH );		//GLUT_DEPTH 깊이에 따른 은면제거
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(width, height);
-	glutCreateWindow("Example15");
+	glutCreateWindow("Example16");
 
 	//--- GLEW 초기화하기
 	glewExperimental = GL_TRUE;
@@ -194,7 +194,7 @@ GLvoid drawScene()
 	// --- View: 카메라를 뒤쪽 위쪽에서 원점을 바라보도록 설정
 	gView = glm::mat4(1.0f);
 	gView = glm::lookAt(		//카메라 외부파라미터
-		glm::vec3(-1.0f, 2.0f, 3.0f),  // 카메라 위치 (x, y, z축이 모두 보이는 위치)	EYE
+		glm::vec3(3.0f, 2.0f, 3.0f),  // 카메라 위치 (x, y, z축이 모두 보이는 위치)	EYE
 		glm::vec3(0.0f, 0.0f, 0.0f),  // 바라보는 지점 (원점) 							AT
 		glm::vec3(0.0f, 1.0f, 0.0f)   // 위쪽 방향 벡터 					 			UP
 	);
@@ -241,7 +241,7 @@ GLvoid Reshape(int w, int h)
 	float aspect = (h == 0) ? 1 : (float)w / (float)h;
 	
 	// 원근 투영 사용 (3D 효과를 더 잘 보여줌)
-	gProjection = glm::perspective(
+	gProjection = glm::perspective(		//orthographic: 직교투영, perspective: 원근투영
 		glm::radians(45.0f),  // 시야각 45도	fovy
 		aspect,               // 종횡비			aspect
 		0.1f,                 // 근평면			-n
@@ -335,7 +335,6 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 		exit(0);
 		break;
 	}
-
 	glutPostRedisplay();
 }
 
