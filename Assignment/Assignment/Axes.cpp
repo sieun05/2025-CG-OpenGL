@@ -7,7 +7,7 @@ GLuint VBO_axes[2] = { 0, };
 void InitAxesBuffer() {
 	const float L = 30.0f;
 
-	// [x,y,z] * 6개 정점 (GL_LINES이므로 2개 = 1개 선분)
+	// [x,y,z] * 6개 점점 (GL_LINES이므로 2개 = 1개 선분)
 	const float axes_vertices[] = {
 		// X axis (red)
 		-L, 0.0f, 0.0f,   
@@ -57,9 +57,16 @@ void InitAxesBuffer() {
 	glBindVertexArray(0);
 }
 
-void DrawAxes()
+void DrawAxes(const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation)
 {
 	glBindVertexArray(VAO_axes);
+	
+	// 좌표축은 변환 없음 (원점 기준)
+	glm::mat4 model = glm::mat4(1.0f);
+	glm::mat4 mvp = projection * view * model;
+	
+	glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(mvp));
+	
 	glLineWidth(2.0f);
 	glDrawArrays(GL_LINES, 0, 6); // 6개의 정점 = 3개의 선분
 	glBindVertexArray(0);

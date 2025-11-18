@@ -4,6 +4,8 @@
 
 #include "Axes.h"
 #include "ground.h"
+#include "Cube.h"
+#include "minimap.h"
 
 void InitBuffer();
 
@@ -27,6 +29,7 @@ bool perspectiveProjection = false;
 float EYE_z = 18.0f;
 
 
+
 void AfterMakeShaders() 
 {
 	glUseProgram(shaderProgramID);
@@ -34,7 +37,6 @@ void AfterMakeShaders()
 	if (uMVP_loc < 0) { printf("uMVP get error\n"); exit(1); }
 	glUseProgram(0);
 }
-
 
 //--- 메인 함수
 void main(int argc, char** argv)
@@ -49,7 +51,7 @@ void main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH );		//GLUT_DEPTH 깊이에 따른 은면제거
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(width, height);
-	glutCreateWindow("Example17");
+	glutCreateWindow("Moving Mountain Maze");
 
 	//--- GLEW 초기화하기
 	glewExperimental = GL_TRUE;
@@ -69,6 +71,20 @@ void main(int argc, char** argv)
 	glutTimerFunc(16, Timer, 1); // 약 60FPS로 타이머 시작
 
 	InitBuffer();
+	
+	// 사용자 안내 메시지 출력
+	printf("=== Moving Mountain Maze ===\n");
+	printf("키 조작:\n");
+	printf("G: 격자 생성 (가로/세로 입력)\n");
+	printf("O: 직교 투영\n");
+	printf("P: 원근 투영\n");
+	printf("Z/z: 카메라 거리 조절\n");
+	printf("Q: 종료\n");
+	printf("=============================\n");
+	printf("먼저 바닥과 좌표축이 표시됩니다.\n");
+	printf("'G' 키를 눌러 큐브 격자를 생성하세요.\n");
+	printf("큐브들이 바닥 아래에서 솟아나는 애니메이션을 볼 수 있습니다!\n");
+	
 	glutMainLoop();
 }
 
@@ -81,18 +97,20 @@ GLvoid Timer(int value)
 void InitBuffer()
 {
 	glEnable(GL_DEPTH_TEST); // 깊이버퍼 활성화
-	glEnable(GL_CULL_FACE); // Face culling 비활성화 (ground가 보이도록)
+	glEnable(GL_CULL_FACE); // Face culling 활성화
 
 	InitAxesBuffer();
 	InitGroundBuffer();
+	InitCubeBuffer();
+	
+	// 사용자 입력은 별도로 처리 (프로그램 시작 후)
 }
 
 //--- 출력 콜백함수
 GLvoid drawScene()
 {
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);  // 어두운 배경색
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		//GL_DEPTH_BUFFER_BIT 깊이에 따른 은면제거
-
 
 	//--- 렌더링 파이프라인에 세이더 불러우기
 	glUseProgram(shaderProgramID);
@@ -106,10 +124,29 @@ GLvoid drawScene()
 	);
 
 
-	DrawAxes();  // 좌표축 그리기
+	// 큐브 애니메이션 업데이트
+	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+	UpdateCubeAnimations(currentTime);
+
+	// === 메인 뷰 렌더링 ===
+	DrawAxes(gView, gProjection, uMVP_loc);  // 좌표축 그리기
 
 	//--- 모델 그리기
 	DrawGround(gView, gProjection, uMVP_loc);
+	
+	//--- 모든 큐브 그리기 (격자가 생성된 경우에만)
+	if (gridWidth > 0 && gridHeight > 0) {
+		DrawAllCubes(gView, gProjection, uMVP_loc);
+	}
+
+	// === 미니맵 렌더링 ===
+	// 현재 창 크기 가져오기
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	int windowWidth = viewport[2];
+	int windowHeight = viewport[3];
+	
+	DrawMinimap(windowWidth, windowHeight, uMVP_loc);
 
 	glutSwapBuffers();
 }
@@ -131,25 +168,27 @@ GLvoid Reshape(int w, int h)
 		100.0f                // 원평면			-f
 	);
 
-
 	glUseProgram(0);
 }
 
 GLvoid Keyboard(unsigned char key, int x, int y)
 {
 	switch (key) {
+	case 'g':  // 격자 생성 (Grid 생성)
+	case 'G':
+		printf("격자를 생성합니다...\n");
+		GetUserInput();
+		break;
+		
 	case 'o':	//직각투영
-		//perspectiveProjection = false;
-
 		gProjection = glm::ortho(
 			-10.0f * aspect, 10.0f * aspect,   // left, right
 			-10.0f, 10.0f,                     // bottom, top
 			0.1f, 100.0f                       // near, far
 		);
 		break;
+		
 	case 'p':	//원근투영
-		//perspectiveProjection = true;
-
 		gProjection = glm::perspective(
 			glm::radians(45.0f),  // 시야각 45도	fovy
 			aspect,               // 종횡비			aspect
@@ -157,10 +196,12 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 			100.0f                // 원평면			-f
 		);
 		break;
+		
 	case 'z':
 		//카메라를 원점에서 더 멀리
 		EYE_z = min(++EYE_z, 40.0f);
 		break;
+		
 	case 'Z':
 		//카메라를 원점에서 더 가깝게
 		EYE_z = max(--EYE_z, 0.0f);
@@ -174,7 +215,6 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 
 	glutPostRedisplay();
 }
-
 //// 특수키 눌림 (화살표 등)
 //GLvoid SpecialKeyDown(int key, int x, int y)
 //{
@@ -211,4 +251,4 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 //		moveDown = false;
 //		break;
 //	}
-//}//}//}//}
+//}

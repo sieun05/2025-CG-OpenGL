@@ -129,12 +129,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Axes.cpp" />
+    <ClCompile Include="Cube.cpp" />
     <ClCompile Include="ground.cpp" />
+    <ClCompile Include="minimap.cpp" />
     <ClCompile Include="소스.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Axes.h" />
+    <ClInclude Include="Cube.h" />
     <ClInclude Include="ground.h" />
+    <ClInclude Include="minimap.h" />
     <ClInclude Include="shader_func.h" />
     <ClInclude Include="WindowToNDC.h" />
     <ClInclude Include="헤더.h" />

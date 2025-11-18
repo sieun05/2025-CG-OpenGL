@@ -7,4 +7,4 @@ extern GLuint VBO_axes[2];
 
 // 좌표축 관련 함수 선언
 void InitAxesBuffer();
-void DrawAxes();
+void DrawAxes(const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation);
