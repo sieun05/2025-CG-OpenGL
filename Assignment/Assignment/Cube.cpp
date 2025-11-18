@@ -10,6 +10,13 @@ int gridWidth = 0, gridHeight = 0;
 float animationStartTime = 0.0f;
 bool animationActive = false;
 
+// Y축 스케일 애니메이션 관련 전역 변수
+bool UpDownAnimationActive = false;
+float upDownAnimationTime = 0.0f;
+
+// 높이 평준화 관련 전역 변수
+bool heightNormalized = false;
+
 void InitCubeBuffer()
 {
     // 큐브의 8개 정점 (1x1x1 크기)
@@ -123,6 +130,7 @@ void CreateCubeGrid(int width, int height)
     std::uniform_real_distribution<float> heightDist(0.5f, 4.0f);  // 높이 0.5~4.0
     std::uniform_real_distribution<float> colorDist(0.6f, 1.0f);   // 색상 0.6~1.0
     std::uniform_real_distribution<float> delayDist(0.0f, 2.0f);   // 애니메이션 지연 시간 0~2초
+    std::uniform_real_distribution<float> phaseDist(0.0f, 6.28318f); // 위상 0~2π
     
     for (int z = 0; z < height; z++) {
         cubeGrid[z].resize(width);
@@ -138,6 +146,7 @@ void CreateCubeGrid(int width, int height)
             cube.sizeX = cellSizeX;  // X축 크기 (100% - 틈 없음)
             cube.sizeZ = cellSizeZ;  // Z축 크기 (100% - 틈 없음)
             cube.height = heightDist(gen);
+            cube.originalHeight = cube.height;  // 원본 높이 저장
             
             // 애니메이션 설정
             cube.targetY = cube.height * 0.5f;  // 목표 Y 위치 (바닥에서 시작)
@@ -145,6 +154,11 @@ void CreateCubeGrid(int width, int height)
             cube.position.y = cube.currentY;    // 초기 위치 설정
             cube.isAnimating = true;
             cube.animDelay = delayDist(gen);    // 랜덤 지연 시간
+            
+            // 스케일 애니메이션 설정
+            cube.currentScale = 1.0f;           // 초기 스케일
+            cube.isScaleAnimating = false;      // 초기에는 비활성
+            cube.scaleAnimPhase = phaseDist(gen); // 랜덤 위상 (각 큐브마다 다른 타이밍)
             
             // 랜덤 색상 설정
             cube.color.r = colorDist(gen);
@@ -167,49 +181,116 @@ void StartCubeAnimations()
     printf("큐브 애니메이션 시작!\n");
 }
 
-void UpdateCubeAnimations(float currentTime)
+void UpDownCubeAnimation()
 {
-    if (!animationActive) return;
+    if (gridWidth == 0 || gridHeight == 0) {
+        printf("먼저 격자를 생성하세요 (G 키)\n");
+        return;
+    }
     
-    bool anyAnimating = false;
-    float elapsedTime = currentTime - animationStartTime;
+    UpDownAnimationActive = true;
+    upDownAnimationTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+    
+    // 모든 큐브의 스케일 애니메이션 활성화
+    for (int z = 0; z < gridHeight; z++) {
+        for (int x = 0; x < gridWidth; x++) {
+            cubeGrid[z][x].isScaleAnimating = true;
+        }
+    }
+    
+    printf("큐브 위아래 스케일 애니메이션 시작!\n");
+}
+
+void StopUpDownCubeAnimation()
+{
+    UpDownAnimationActive = false;
+    
+    // 모든 큐브의 스케일 애니메이션 비활성화 및 원래 크기로 복원
+    for (int z = 0; z < gridHeight; z++) {
+        for (int x = 0; x < gridWidth; x++) {
+            Cube& cube = cubeGrid[z][x];
+            cube.isScaleAnimating = false;
+            // Y 위치를 원래 높이의 절반으로 복원 (바닥 기준)
+        }
+    }
+    
+    printf("큐브 위아래 스케일 애니메이션 정지!\n");
+}
+
+void UpdateUpDownAnimation(float currentTime)
+{
+    if (!UpDownAnimationActive) return;
+    
+    float elapsedTime = currentTime - upDownAnimationTime;
     
     for (int z = 0; z < gridHeight; z++) {
         for (int x = 0; x < gridWidth; x++) {
             Cube& cube = cubeGrid[z][x];
             
-            if (cube.isAnimating) {
-                // 지연 시간이 지났는지 확인
-                if (elapsedTime >= cube.animDelay) {
-                    float animTime = elapsedTime - cube.animDelay;
-                    float animDuration = 1.5f;  // 애니메이션 지속 시간 (1.5초)
-                    
-                    if (animTime < animDuration) {
-                        // 이징 함수 적용 (부드러운 움직임)
-                        float t = animTime / animDuration;
-                        float easedT = t * t * (3.0f - 2.0f * t);  // smoothstep 함수
-                        
-                        cube.currentY = -cube.height + (cube.targetY + cube.height) * easedT;
-                        cube.position.y = cube.currentY;
-                        anyAnimating = true;
-                    } else {
-                        // 애니메이션 완료
-                        cube.currentY = cube.targetY;
-                        cube.position.y = cube.currentY;
-                        cube.isAnimating = false;
-                    }
-                } else {
-                    anyAnimating = true;  // 아직 지연 시간 중
-                }
+            if (cube.isScaleAnimating) {
+                // 사인파를 이용한 부드러운 스케일 변화
+                float animSpeed = 2.0f;  // 애니메이션 속도
+                float scaleAmount = 0.5f; // 스케일 변화량 (0.5 ~ 1.5 범위)
+                
+                // 각 큐브마다 다른 위상으로 사인파 계산
+                float sineValue = sin(elapsedTime * animSpeed + cube.scaleAnimPhase);
+                cube.currentScale = 1.0f + scaleAmount * sineValue;
+                
+                // 바닥 기준으로 Y 위치 조정 (큐브 바닥이 항상 바닥에 닿도록)
+                float scaledHeight = cube.originalHeight * cube.currentScale;
+                cube.position.y = scaledHeight * 0.5f;
             }
         }
     }
-    
-    // 모든 큐브의 애니메이션이 끝났으면 전체 애니메이션 종료
-    if (!anyAnimating) {
-        animationActive = false;
-        printf("모든 큐브 애니메이션 완료!\n");
+}
+
+void UpdateCubeAnimations(float currentTime)
+{
+    // 기존 솟아나기 애니메이션 업데이트
+    if (animationActive) {
+        bool anyAnimating = false;
+        float elapsedTime = currentTime - animationStartTime;
+        
+        for (int z = 0; z < gridHeight; z++) {
+            for (int x = 0; x < gridWidth; x++) {
+                Cube& cube = cubeGrid[z][x];
+                
+                if (cube.isAnimating) {
+                    // 지연 시간이 지났는지 확인
+                    if (elapsedTime >= cube.animDelay) {
+                        float animTime = elapsedTime - cube.animDelay;
+                        float animDuration = 1.5f;  // 애니메이션 지속 시간 (1.5초)
+                        
+                        if (animTime < animDuration) {
+                            // 이징 함수 적용 (부드러운 움직임)
+                            float t = animTime / animDuration;
+                            float easedT = t * t * (3.0f - 2.0f * t);  // smoothstep 함수
+                            
+                            cube.currentY = -cube.height + (cube.targetY + cube.height) * easedT;
+                            cube.position.y = cube.currentY;
+                            anyAnimating = true;
+                        } else {
+                            // 애니메이션 완료
+                            cube.currentY = cube.targetY;
+                            cube.position.y = cube.currentY;
+                            cube.isAnimating = false;
+                        }
+                    } else {
+                        anyAnimating = true;  // 아직 지연 시간 중
+                    }
+                }
+            }
+        }
+        
+        // 모든 큐브의 애니메이션이 끝났으면 전체 애니메이션 종료
+        if (!anyAnimating) {
+            animationActive = false;
+            printf("모든 큐브 애니메이션 완료!\n");
+        }
     }
+    
+    // 위아래 스케일 애니메이션 업데이트
+    UpdateUpDownAnimation(currentTime);
 }
 
 void DrawCube(const Cube& cube, const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation)
@@ -219,7 +300,11 @@ void DrawCube(const Cube& cube, const glm::mat4& view, const glm::mat4& projecti
     // 모델 행렬 생성 (위치, X/Z 크기, 높이 적용)
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, cube.position);
-    model = glm::scale(model, glm::vec3(cube.sizeX, cube.height, cube.sizeZ));
+    
+    // 스케일 애니메이션이 활성화된 경우 currentScale 사용, 아니면 원래 높이 사용
+    //float finalHeight = cube.isScaleAnimating ? (cube.originalHeight * cube.currentScale) : cube.height;
+    float finalHeight = (cube.originalHeight * cube.currentScale);
+    model = glm::scale(model, glm::vec3(cube.sizeX, finalHeight, cube.sizeZ));
 
     glm::mat4 mvp = projection * view * model;
     glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(mvp));
@@ -236,5 +321,37 @@ void DrawAllCubes(const glm::mat4& view, const glm::mat4& projection, GLint mvpL
         for (int x = 0; x < gridWidth; x++) {
             DrawCube(cubeGrid[z][x], view, projection, mvpLocation);
         }
+    }
+}
+
+void ToggleHeightNormalization()
+{
+    if (gridWidth == 0 || gridHeight == 0) {
+        printf("먼저 격자를 생성하세요 (G 키)\n");
+        return;
+    }
+    
+    //heightNormalized = !heightNormalized;
+    
+    for (int z = 0; z < gridHeight; z++) {
+        for (int x = 0; x < gridWidth; x++) {
+            Cube& cube = cubeGrid[z][x];
+            
+            if (heightNormalized) {
+                // 높이를 1.0f로 평준화
+                cube.currentScale = 1.0f / cube.originalHeight;
+                cube.position.y = 0.5f; // 1.0f 높이의 절반
+            } else {
+                // 원래 높이로 복원
+                cube.currentScale = 1.0f;
+                cube.position.y = cube.originalHeight * 0.5f;
+            }
+        }
+    }
+    
+    if (heightNormalized) {
+        printf("모든 큐브 높이를 1.0f로 평준화!\n");
+    } else {
+        printf("모든 큐브 높이를 원래대로 복원!\n");
     }
 }

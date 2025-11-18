@@ -28,6 +28,14 @@ float aspect = 1.0f;
 bool perspectiveProjection = false;
 float EYE_z = 18.0f;
 
+// 카메라 Y축 회전 관련 변수
+float cameraYRotation = 0.0f;  // Y축 회전 각도
+bool cameraRotating = false;   // 회전 중인지 여부
+int rotationDirection = 1;     // 1: 양의 방향, -1: 음의 방향
+
+// 육면체 애니메이션 토글
+bool cubeUpDownAnimation = false;
+
 
 
 void AfterMakeShaders() 
@@ -36,6 +44,23 @@ void AfterMakeShaders()
 	uMVP_loc = glGetUniformLocation(shaderProgramID, "uMVP");
 	if (uMVP_loc < 0) { printf("uMVP get error\n"); exit(1); }
 	glUseProgram(0);
+}
+
+// 카메라 Y축 회전 업데이트 함수
+void UpdateCameraRotation()
+{
+	if (cameraRotating) {
+		const float rotationSpeed = 1.0f; // 회전 속도 (도/프레임)
+		cameraYRotation += rotationSpeed * rotationDirection;
+
+		// 360도를 넘으면 0으로 리셋
+		if (cameraYRotation >= 360.0f) {
+			cameraYRotation -= 360.0f;
+		}
+		else if (cameraYRotation < 0.0f) {
+			cameraYRotation += 360.0f;
+		}
+	}
 }
 
 //--- 메인 함수
@@ -76,6 +101,11 @@ void main(int argc, char** argv)
 	printf("=== Moving Mountain Maze ===\n");
 	printf("키 조작:\n");
 	printf("G: 격자 생성 (가로/세로 입력)\n");
+	printf("m: 큐브 위아래 스케일 애니메이션 시작\n");
+	printf("M: 큐브 위아래 스케일 애니메이션 정지\n");
+	printf("v: 모든 큐브 높이 1.0f로 평준화 / 원래 높이로 복원\n");
+	printf("y: 카메라 Y축 양의 방향 회전 시작/정지\n");
+	printf("Y: 카메라 Y축 음의 방향 회전 시작/정지\n");
 	printf("O: 직교 투영\n");
 	printf("P: 원근 투영\n");
 	printf("Z/z: 카메라 거리 조절\n");
@@ -84,12 +114,18 @@ void main(int argc, char** argv)
 	printf("먼저 바닥과 좌표축이 표시됩니다.\n");
 	printf("'G' 키를 눌러 큐브 격자를 생성하세요.\n");
 	printf("큐브들이 바닥 아래에서 솟아나는 애니메이션을 볼 수 있습니다!\n");
+	printf("'m' 키로 큐브들이 위아래로 움직이는 애니메이션을 시작할 수 있습니다!\n");
+	printf("'y/Y' 키로 카메라가 Y축을 중심으로 회전합니다!\n");
+	printf("'v' 키로 모든 큐브의 높이를 평준화하거나 복원할 수 있습니다!\n");
 	
 	glutMainLoop();
 }
 
 GLvoid Timer(int value)
 {
+	// 카메라 회전 업데이트
+	UpdateCameraRotation();
+	
 	glutPostRedisplay();
 	glutTimerFunc(16, Timer, 1); // 약 60FPS로 타이머 시작
 }
@@ -115,14 +151,22 @@ GLvoid drawScene()
 	//--- 렌더링 파이프라인에 세이더 불러우기
 	glUseProgram(shaderProgramID);
 
-	// --- View: 카메라를 뒤쪽 위쪽에서 원점을 바라보도록 설정 (더 높은 위치에서)
+	// --- View: 카메라를 Y축 회전 적용하여 설정
 	gView = glm::mat4(1.0f);
+	
+	// 카메라 위치 계산 (Y축 회전 적용)
+	float cameraRadius = sqrt(18.0f * 18.0f + EYE_z * EYE_z); // 카메라와 원점 사이의 거리
+	float radians = glm::radians(cameraYRotation);
+	
+	float cameraX = cameraRadius * sin(radians);
+	float cameraY = 20.0f; // Y 높이는 고정
+	float cameraZ = cameraRadius * cos(radians);
+	
 	gView = glm::lookAt(		//카메라 외부파라미터
-		glm::vec3(18.0f, 20.0f, EYE_z),  // 카메라 위치를 더 높고 멀리 (x, y, z축이 모두 보이는 위치)
-		glm::vec3(0.0f, 0.0f, 0.0f),  // 바라보는 지점 (원점) 							AT
-		glm::vec3(0.0f, 1.0f, 0.0f)   // 위쪽 방향 벡터 					 			UP
+		glm::vec3(cameraX, cameraY, cameraZ),  // 회전된 카메라 위치
+		glm::vec3(0.0f, 0.0f, 0.0f),           // 바라보는 지점 (원점)
+		glm::vec3(0.0f, 1.0f, 0.0f)            // 위쪽 방향 벡터
 	);
-
 
 	// 큐브 애니메이션 업데이트
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
@@ -180,6 +224,47 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 		GetUserInput();
 		break;
 		
+	case 'm':  // 위아래 스케일 애니메이션 시작 (소문자 m)
+		if (not cubeUpDownAnimation) {
+			cubeUpDownAnimation = true;
+			UpDownCubeAnimation();
+			heightNormalized = false; // 높이 평준화 해제
+		}
+		
+		break;
+	case 'M':  // 위아래 스케일 애니메이션 정지 (대문자 M)
+		cubeUpDownAnimation = false;
+		StopUpDownCubeAnimation();
+		break;
+
+	case 'v':
+		heightNormalized = !heightNormalized;
+		cubeUpDownAnimation = false;
+		StopUpDownCubeAnimation();
+		ToggleHeightNormalization();
+		break;
+	case 'y':  // Y축 양의 방향 회전 시작/정지
+		cameraRotating = !cameraRotating;
+		if (cameraRotating) {
+			rotationDirection = 1;
+			printf("카메라 Y축 양의 방향 회전 시작\n");
+		}
+		else {
+			printf("카메라 Y축 회전 정지\n");
+		}
+		break;
+		
+	case 'Y':  // Y축 음의 방향 회전 시작/정지
+		cameraRotating = !cameraRotating;
+		if (cameraRotating) {
+			rotationDirection = -1;
+			printf("카메라 Y축 음의 방향 회전 시작\n");
+		}
+		else {
+			printf("카메라 Y축 회전 정지\n");
+		}
+		break;
+		
 	case 'o':	//직각투영
 		gProjection = glm::ortho(
 			-10.0f * aspect, 10.0f * aspect,   // left, right
@@ -199,12 +284,14 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 		
 	case 'z':
 		//카메라를 원점에서 더 멀리
-		EYE_z = min(++EYE_z, 40.0f);
+		EYE_z++;
+		if (EYE_z > 40.0f) EYE_z = 40.0f;
 		break;
 		
 	case 'Z':
 		//카메라를 원점에서 더 가깝게
-		EYE_z = max(--EYE_z, 0.0f);
+		EYE_z--;
+		if (EYE_z < 0.0f) EYE_z = 0.0f;
 		break;
 
 	case 'q':
