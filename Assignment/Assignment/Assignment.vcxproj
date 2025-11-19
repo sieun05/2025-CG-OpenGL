@@ -70,6 +70,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>C:\Users\a0104\OneDrive\문서\GitHub\2025-CG-OpenGL\Assignment\Assignment\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\a0104\OneDrive\문서\GitHub\2025-CG-OpenGL\Assignment\Assignment\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -121,6 +125,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>glew32.lib freeglut.lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -131,14 +136,18 @@
     <ClCompile Include="Axes.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="ground.cpp" />
+    <ClCompile Include="maze.cpp" />
     <ClCompile Include="minimap.cpp" />
+    <ClCompile Include="player.cpp" />
     <ClCompile Include="소스.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Axes.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="ground.h" />
+    <ClInclude Include="maze.h" />
     <ClInclude Include="minimap.h" />
+    <ClInclude Include="player.h" />
     <ClInclude Include="shader_func.h" />
     <ClInclude Include="WindowToNDC.h" />
     <ClInclude Include="헤더.h" />

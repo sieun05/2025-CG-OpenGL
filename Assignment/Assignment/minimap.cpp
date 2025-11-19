@@ -29,13 +29,6 @@ void DrawMinimap(int windowWidth, int windowHeight, GLint mvpLocation)
     );
 
 
-    // 직교 투영 설정 (탑뷰용)
-    //glm::mat4 minimapProjection = glm::ortho(
-    //    -12.0f, 12.0f,  // left, right (바닥보다 약간 크게)
-    //    -12.0f, 12.0f,  // bottom, top
-    //    0.1f, 50.0f     // near, far
-    //);
-
     // 원근 투영 설정 (탑뷰용)
     glm::mat4 minimapProjection = glm::perspective(
         glm::radians(60.0f),  // 시야각 60도 (넓은 시야각으로 더 많은 영역 표시)
@@ -51,6 +44,9 @@ void DrawMinimap(int windowWidth, int windowHeight, GLint mvpLocation)
     if (gridWidth > 0 && gridHeight > 0) {
         DrawMinimapCubes(minimapView, minimapProjection, mvpLocation);
     }
+    
+    // 미니맵 플레이어 그리기
+    DrawMinimapPlayer(minimapView, minimapProjection, mvpLocation);
 
     // 원래 뷰포트 복원
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
@@ -77,12 +73,25 @@ void DrawMinimapCubes(const glm::mat4& view, const glm::mat4& projection, GLint 
         for (int x = 0; x < gridWidth; x++) {
             const Cube& cube = cubeGrid[z][x];
 
+            // 삭제된 큐브는 렌더링하지 않음 (미로에서 삭제된 경우)
+            if (cube.isDeleted) {
+                continue;
+            }
+
+            // 스케일이 0이면 큐브를 렌더링하지 않음 (삭제된 것으로 처리)
+            if (cube.currentScale <= 0.0f) {
+                continue;
+            }
+
             glBindVertexArray(VAO_cube);
 
-            // 미니맵용 모델 행렬 (실제 큐브 위치 사용)
+            // 미니맵용 모델 행렬 (실제 큐브 위치와 스케일 사용)
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, cube.position);
-            model = glm::scale(model, glm::vec3(cube.sizeX, cube.height, cube.sizeZ));
+            
+            // 스케일 애니메이션 반영
+            float finalHeight = (cube.originalHeight * cube.currentScale);
+            model = glm::scale(model, glm::vec3(cube.sizeX, finalHeight, cube.sizeZ));
 
             glm::mat4 mvp = projection * view * model;
             glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(mvp));
@@ -91,5 +100,40 @@ void DrawMinimapCubes(const glm::mat4& view, const glm::mat4& projection, GLint 
             glBindVertexArray(0);
         }
     }
+}
+
+void DrawMinimapPlayer(const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation)
+{
+    extern Player player;
+    extern bool playerActive;
+    
+    // 플레이어가 활성화되지 않았으면 그리지 않음
+    if (!playerActive || !player.isActive) {
+        return;
+    }
+    
+    extern GLuint VAO_cube;  // 큐브와 같은 VAO 사용
+    
+    glBindVertexArray(VAO_cube);
+    
+    // 미니맵용 플레이어 모델 행렬 생성
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, player.position);
+    
+    // 플레이어를 미니맵에서 더 잘 보이게 하기 위해 크기를 약간 키움
+    glm::vec3 minimapPlayerSize = player.size;
+    minimapPlayerSize.x *= 1.5f;  // X축 크기 1.5배
+    minimapPlayerSize.y *= 2.0f;  // Y축 높이 2배 (더 잘 보이게)
+    minimapPlayerSize.z *= 1.5f;  // Z축 크기 1.5배
+    
+    model = glm::scale(model, minimapPlayerSize);
+    
+    glm::mat4 mvp = projection * view * model;
+    glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(mvp));
+    
+    // 플레이어 그리기 (빨간색 큐브)
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    
+    glBindVertexArray(0);
 }
 

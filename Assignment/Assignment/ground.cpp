@@ -7,7 +7,7 @@ GLuint EBO_ground;     // ÀÎµ¦½º ¹öÆÛ
 void InitGroundBuffer()
 {
 	const float size = 10.0f; // ¹Ù´Ú Å©±â¸¦ ´õ Å©°Ô
-	const float color = 0.8f; // »ö»óÀ» ´õ ¹à°Ô
+	const float color = 0.3f; // »ö»óÀ» ´õ ¹à°Ô
 
 	const float ground_vertices[] = {
 		-size, 0.0f, -size,  // 0: ¿ÞÂÊ µÚ

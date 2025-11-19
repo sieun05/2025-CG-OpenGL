@@ -6,6 +6,8 @@
 #include "ground.h"
 #include "Cube.h"
 #include "minimap.h"
+#include "maze.h"
+#include "player.h"
 
 void InitBuffer();
 
@@ -13,8 +15,8 @@ GLvoid drawScene();
 GLvoid Reshape(int w, int h);
 GLvoid Keyboard(unsigned char key, int x, int y);
 GLvoid Timer(int value);
-//GLvoid SpecialKeyDown(int key, int x, int y);
-//GLvoid SpecialKeyUp(int key, int x, int y);
+GLvoid SpecialKeyDown(int key, int x, int y);
+GLvoid SpecialKeyUp(int key, int x, int y);
 
 // 전역 변수 정의 (CommonHeaders.h에서 extern으로 선언된 것들)
 // shaderProgramID는 shader_func.h에서 이미 정의됨
@@ -33,9 +35,17 @@ float cameraYRotation = 0.0f;  // Y축 회전 각도
 bool cameraRotating = false;   // 회전 중인지 여부
 int rotationDirection = 1;     // 1: 양의 방향, -1: 음의 방향
 
+// 카메라 시점 모드
+enum CameraMode {
+    THIRD_PERSON = 0,    // 3인칭 시점 (기본)
+    FIRST_PERSON = 1     // 1인칭 시점
+};
+CameraMode currentCameraMode = THIRD_PERSON;
+
 // 육면체 애니메이션 토글
 bool cubeUpDownAnimation = false;
 
+// 미로 생성 토글
 
 
 void AfterMakeShaders() 
@@ -91,8 +101,8 @@ void main(int argc, char** argv)
 	glutReshapeFunc(Reshape);
 	glutDisplayFunc(drawScene);
 	glutKeyboardFunc(Keyboard);
-	//glutSpecialFunc(SpecialKeyDown);    // 화살표 등 특수키 눌림 처리
-	//glutSpecialUpFunc(SpecialKeyUp);
+	glutSpecialFunc(SpecialKeyDown);    // 화살표 등 특수키 눌림 처리
+	glutSpecialUpFunc(SpecialKeyUp);    // 특수키 떼었을 때 처리
 	glutTimerFunc(16, Timer, 1); // 약 60FPS로 타이머 시작
 
 	InitBuffer();
@@ -100,23 +110,29 @@ void main(int argc, char** argv)
 	// 사용자 안내 메시지 출력
 	printf("=== Moving Mountain Maze ===\n");
 	printf("키 조작:\n");
-	printf("G: 격자 생성 (가로/세로 입력)\n");
+	printf("G: 직육면체 지형 생성 (가로/세로 입력)\n");
+	printf("r: 미로 생성 (일부 큐브 삭제하여 경로 생성)\n");
+	printf("s: 플레이어 생성 (미로의 빈 공간에 배치)\n");
+	printf("c: 전체 초기화 (처음 상태로 리셋)\n");
+	cout << endl;
+	
+	printf("화살표 키: 플레이어 이동 (위/아래/좌/우)\n");
+	printf("1: 1인칭 시점 (플레이어 눈높이에서 보기)\n");
+	printf("3: 3인칭 시점 (위에서 전체 보기)\n");
+	printf("+: 플레이어 속도 증가\n");
+	printf("-: 플레이어 속도 감소\n");
+	cout << endl;
+
 	printf("m: 큐브 위아래 스케일 애니메이션 시작\n");
 	printf("M: 큐브 위아래 스케일 애니메이션 정지\n");
 	printf("v: 모든 큐브 높이 1.0f로 평준화 / 원래 높이로 복원\n");
-	printf("y: 카메라 Y축 양의 방향 회전 시작/정지\n");
-	printf("Y: 카메라 Y축 음의 방향 회전 시작/정지\n");
+	printf("y: 카메라 Y축 양의 방향 회전 시작/정지 (3인칭 모드만)\n");
+	printf("Y: 카메라 Y축 음의 방향 회전 시작/정지 (3인칭 모드만)\n");
 	printf("O: 직교 투영\n");
 	printf("P: 원근 투영\n");
-	printf("Z/z: 카메라 거리 조절\n");
+	printf("Z/z: 카메라 거리 조절 (3인칭 모드만)\n");
 	printf("Q: 종료\n");
 	printf("=============================\n");
-	printf("먼저 바닥과 좌표축이 표시됩니다.\n");
-	printf("'G' 키를 눌러 큐브 격자를 생성하세요.\n");
-	printf("큐브들이 바닥 아래에서 솟아나는 애니메이션을 볼 수 있습니다!\n");
-	printf("'m' 키로 큐브들이 위아래로 움직이는 애니메이션을 시작할 수 있습니다!\n");
-	printf("'y/Y' 키로 카메라가 Y축을 중심으로 회전합니다!\n");
-	printf("'v' 키로 모든 큐브의 높이를 평준화하거나 복원할 수 있습니다!\n");
 	
 	glutMainLoop();
 }
@@ -125,6 +141,9 @@ GLvoid Timer(int value)
 {
 	// 카메라 회전 업데이트
 	UpdateCameraRotation();
+	
+	// 플레이어 업데이트
+	UpdatePlayer();
 	
 	glutPostRedisplay();
 	glutTimerFunc(16, Timer, 1); // 약 60FPS로 타이머 시작
@@ -138,6 +157,7 @@ void InitBuffer()
 	InitAxesBuffer();
 	InitGroundBuffer();
 	InitCubeBuffer();
+	InitPlayer();  // 플레이어 초기화
 	
 	// 사용자 입력은 별도로 처리 (프로그램 시작 후)
 }
@@ -151,22 +171,40 @@ GLvoid drawScene()
 	//--- 렌더링 파이프라인에 세이더 불러우기
 	glUseProgram(shaderProgramID);
 
-	// --- View: 카메라를 Y축 회전 적용하여 설정
+	// --- View: 카메라 모드에 따라 시점 설정
 	gView = glm::mat4(1.0f);
 	
-	// 카메라 위치 계산 (Y축 회전 적용)
-	float cameraRadius = sqrt(18.0f * 18.0f + EYE_z * EYE_z); // 카메라와 원점 사이의 거리
-	float radians = glm::radians(cameraYRotation);
-	
-	float cameraX = cameraRadius * sin(radians);
-	float cameraY = 20.0f; // Y 높이는 고정
-	float cameraZ = cameraRadius * cos(radians);
-	
-	gView = glm::lookAt(		//카메라 외부파라미터
-		glm::vec3(cameraX, cameraY, cameraZ),  // 회전된 카메라 위치
-		glm::vec3(0.0f, 0.0f, 0.0f),           // 바라보는 지점 (원점)
-		glm::vec3(0.0f, 1.0f, 0.0f)            // 위쪽 방향 벡터
-	);
+	if (currentCameraMode == FIRST_PERSON && playerActive) {
+		// 1인칭 시점: 플레이어 위치에서 앞쪽을 바라봄
+		extern Player player;
+		
+		glm::vec3 cameraPos = player.position;
+		cameraPos.y += 0.4f;  // 플레이어 눈높이 (약간 위쪽)
+		
+		// 플레이어가 바라보는 방향 (기본적으로 Z축 음의 방향)
+		glm::vec3 frontDirection(0.0f, 0.0f, -1.0f);
+		glm::vec3 lookAt = cameraPos + frontDirection;
+		
+		gView = glm::lookAt(
+			cameraPos,                          // 카메라 위치 (플레이어 위치)
+			lookAt,                            // 바라보는 지점 (앞쪽)
+			glm::vec3(0.0f, 1.0f, 0.0f)        // 위쪽 방향 벡터
+		);
+	} else {
+		// 3인칭 시점: 기존 카메라 (Y축 회전 적용)
+		float cameraRadius = sqrt(18.0f * 18.0f + EYE_z * EYE_z);
+		float radians = glm::radians(cameraYRotation);
+		
+		float cameraX = cameraRadius * sin(radians);
+		float cameraY = 20.0f; // Y 높이는 고정
+		float cameraZ = cameraRadius * cos(radians);
+		
+		gView = glm::lookAt(
+			glm::vec3(cameraX, cameraY, cameraZ),  // 회전된 카메라 위치
+			glm::vec3(0.0f, 0.0f, 0.0f),           // 바라보는 지점 (원점)
+			glm::vec3(0.0f, 1.0f, 0.0f)            // 위쪽 방향 벡터
+		);
+	}
 
 	// 큐브 애니메이션 업데이트
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
@@ -181,6 +219,11 @@ GLvoid drawScene()
 	//--- 모든 큐브 그리기 (격자가 생성된 경우에만)
 	if (gridWidth > 0 && gridHeight > 0) {
 		DrawAllCubes(gView, gProjection, uMVP_loc);
+	}
+	
+	//--- 플레이어 그리기 (1인칭 모드에서는 플레이어를 그리지 않음)
+	if (currentCameraMode != FIRST_PERSON) {
+		DrawPlayer(gView, gProjection, uMVP_loc);
 	}
 
 	// === 미니맵 렌더링 ===
@@ -221,7 +264,79 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 	case 'g':  // 격자 생성 (Grid 생성)
 	case 'G':
 		printf("격자를 생성합니다...\n");
+		mazeGenerated = false; // 미로 생성 상태 초기화
+		cubeUpDownAnimation = false;
+		heightNormalized = false;
+		cameraRotating = false;
+		StopUpDownCubeAnimation();
+		ResetPlayer();  // 플레이어 제거
 		GetUserInput();
+		break;
+		
+	case 'c':  // 전체 초기화 (Clear/Reset)
+	case 'C':
+		printf("프로그램을 초기 상태로 리셋합니다...\n");
+		
+		// 미로 상태 초기화
+		mazeGenerated = false;
+		if (gridWidth > 0 && gridHeight > 0) {
+			ResetMaze();  // 미로 초기화
+		}
+		
+		// 큐브 애니메이션 정리
+		cubeUpDownAnimation = false;
+		heightNormalized = false;
+		StopUpDownCubeAnimation();
+		
+		// 카메라 초기화
+		cameraRotating = false;
+		cameraYRotation = 0.0f;
+		rotationDirection = 1;
+		currentCameraMode = THIRD_PERSON;
+		EYE_z = 18.0f;
+		
+		// 투영 초기화 (원근 투영)
+		gProjection = glm::perspective(
+			glm::radians(45.0f),  // 시야각 45도
+			aspect,               // 종횡비
+			0.1f,                 // 근평면
+			100.0f                // 원평면
+		);
+		
+		// 플레이어 초기화
+		ResetPlayer();
+		
+		// 격자 제거 (빈 상태로)
+		gridWidth = 0;
+		gridHeight = 0;
+		cubeGrid.clear();
+		break;
+		
+	case 's':  // 플레이어 생성 (Start player)
+	case 'S':
+		CreatePlayer();
+		break;
+		
+	case '1':  // 1인칭 시점으로 변환
+		currentCameraMode = FIRST_PERSON;
+		cameraRotating = false;  // 1인칭 모드에서는 Y축 회전 정지
+		printf("카메라 시점: 1인칭 모드\n");
+		if (!playerActive) {
+			printf("1인칭 시점을 사용하려면 먼저 플레이어를 생성하세요 (s 키)\n");
+		}
+		break;
+		
+	case '3':  // 3인칭 시점으로 변환
+		currentCameraMode = THIRD_PERSON;
+		printf("카메라 시점: 3인칭 모드\n");
+		break;
+		
+	case '+':  // 플레이어 속도 증가
+		IncreasePlayerSpeed();
+		break;
+		
+	case '-':  // 플레이어 속도 감소
+		DecreasePlayerSpeed();
 		break;
 		
 	case 'm':  // 위아래 스케일 애니메이션 시작 (소문자 m)
@@ -243,25 +358,33 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 		StopUpDownCubeAnimation();
 		ToggleHeightNormalization();
 		break;
-	case 'y':  // Y축 양의 방향 회전 시작/정지
-		cameraRotating = !cameraRotating;
-		if (cameraRotating) {
-			rotationDirection = 1;
-			printf("카메라 Y축 양의 방향 회전 시작\n");
-		}
-		else {
-			printf("카메라 Y축 회전 정지\n");
+	case 'y':  // Y축 양의 방향 회전 시작/정지 (3인칭 모드에서만)
+		if (currentCameraMode == THIRD_PERSON) {
+			cameraRotating = !cameraRotating;
+			if (cameraRotating) {
+				rotationDirection = 1;
+				printf("카메라 Y축 양의 방향 회전 시작\n");
+			}
+			else {
+				printf("카메라 Y축 회전 정지\n");
+			}
+		} else {
+			printf("Y축 회전은 3인칭 모드에서만 사용 가능합니다\n");
 		}
 		break;
 		
-	case 'Y':  // Y축 음의 방향 회전 시작/정지
-		cameraRotating = !cameraRotating;
-		if (cameraRotating) {
-			rotationDirection = -1;
-			printf("카메라 Y축 음의 방향 회전 시작\n");
-		}
-		else {
-			printf("카메라 Y축 회전 정지\n");
+	case 'Y':  // Y축 음의 방향 회전 시작/정지 (3인칭 모드에서만)
+		if (currentCameraMode == THIRD_PERSON) {
+			cameraRotating = !cameraRotating;
+			if (cameraRotating) {
+				rotationDirection = -1;
+				printf("카메라 Y축 음의 방향 회전 시작\n");
+			}
+			else {
+				printf("카메라 Y축 회전 정지\n");
+			}
+		} else {
+			printf("Y축 회전은 3인칭 모드에서만 사용 가능합니다\n");
 		}
 		break;
 		
@@ -283,17 +406,31 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 		break;
 		
 	case 'z':
-		//카메라를 원점에서 더 멀리
-		EYE_z++;
-		if (EYE_z > 40.0f) EYE_z = 40.0f;
+		//카메라를 원점에서 더 멀리 (3인칭 모드에서만)
+		if (currentCameraMode == THIRD_PERSON) {
+			EYE_z++;
+			if (EYE_z > 40.0f) EYE_z = 40.0f;
+		} else {
+			printf("카메라 거리 조절은 3인칭 모드에서만 사용 가능합니다\n");
+		}
 		break;
 		
 	case 'Z':
-		//카메라를 원점에서 더 가깝게
-		EYE_z--;
-		if (EYE_z < 0.0f) EYE_z = 0.0f;
+		//카메라를 원점에서 더 가깝게 (3인칭 모드에서만)
+		if (currentCameraMode == THIRD_PERSON) {
+			EYE_z--;
+			if (EYE_z < 0.0f) EYE_z = 0.0f;
+		} else {
+			printf("카메라 거리 조절은 3인칭 모드에서만 사용 가능합니다\n");
+		}
 		break;
-
+	case 'r':
+		if (not mazeGenerated) {
+			cubeUpDownAnimation = false;
+			ResetPlayer();  // 플레이어 제거
+			GenerateMaze(); // 미로 생성
+		}
+		break;
 	case 'q':
 	case 'Q':
 		exit(0);
@@ -302,40 +439,41 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 
 	glutPostRedisplay();
 }
-//// 특수키 눌림 (화살표 등)
-//GLvoid SpecialKeyDown(int key, int x, int y)
-//{
-//	switch (key) {
-//	case GLUT_KEY_LEFT:
-//		moveLeft = true;
-//		break;
-//	case GLUT_KEY_RIGHT:
-//		moveRight = true;
-//		break;
-//	case GLUT_KEY_UP:
-//		moveUp = true;
-//		break;
-//	case GLUT_KEY_DOWN:
-//		moveDown = true;
-//		break;
-//	}
-//}
-//
-//// 특수키 떼었을 때
-//GLvoid SpecialKeyUp(int key, int x, int y)
-//{
-//	switch (key) {
-//	case GLUT_KEY_LEFT:
-//		moveLeft = false;
-//		break;
-//	case GLUT_KEY_RIGHT:
-//		moveRight = false;
-//		break;
-//	case GLUT_KEY_UP:
-//		moveUp = false;
-//		break;
-//	case GLUT_KEY_DOWN:
-//		moveDown = false;
-//		break;
-//	}
-//}
+
+// 특수키 눌림 (화살표 등)
+GLvoid SpecialKeyDown(int key, int x, int y)
+{
+	switch (key) {
+	case GLUT_KEY_LEFT:
+		moveLeft = true;
+		break;
+	case GLUT_KEY_RIGHT:
+		moveRight = true;
+		break;
+	case GLUT_KEY_UP:
+		moveUp = true;
+		break;
+	case GLUT_KEY_DOWN:
+		moveDown = true;
+		break;
+	}
+}
+
+// 특수키 떼었을 때
+GLvoid SpecialKeyUp(int key, int x, int y)
+{
+	switch (key) {
+	case GLUT_KEY_LEFT:
+		moveLeft = false;
+		break;
+	case GLUT_KEY_RIGHT:
+		moveRight = false;
+		break;
+	case GLUT_KEY_UP:
+		moveUp = false;
+		break;
+	case GLUT_KEY_DOWN:
+		moveDown = false;
+		break;
+	}
+}

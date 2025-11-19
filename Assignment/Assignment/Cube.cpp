@@ -94,17 +94,41 @@ void GetUserInput()
 {
     int width, height;
     
-    printf("가로 칸 수를 입력하세요 (5-25): ");
-    scanf("%d", &width);
+    // 가로 칸 수 입력 (입력 검증 포함)
+    while (true) {
+        printf("가로 칸 수를 입력하세요 (5-25): ");
+        if (scanf("%d", &width) == 1) {
+            // 범위 검사
+            if (width >= 5 && width <= 25) {
+                break;  // 올바른 입력
+            } else {
+                printf("잘못된 범위입니다. 5-25 사이의 숫자를 입력하세요.\n");
+            }
+        } else {
+            printf("잘못된 입력입니다. 숫자를 입력하세요.\n");
+            // 입력 버퍼 클리어
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF);
+        }
+    }
     
-    printf("세로 칸 수를 입력하세요 (5-25): ");
-    scanf("%d", &height);
-    
-    // 범위 검사
-    if (width < 5) width = 5;
-    if (width > 25) width = 25;
-    if (height < 5) height = 5;
-    if (height > 25) height = 25;
+    // 세로 칸 수 입력 (입력 검증 포함)
+    while (true) {
+        printf("세로 칸 수를 입력하세요 (5-25): ");
+        if (scanf("%d", &height) == 1) {
+            // 범위 검사
+            if (height >= 5 && height <= 25) {
+                break;  // 올바른 입력
+            } else {
+                printf("잘못된 범위입니다. 5-25 사이의 숫자를 입력하세요.\n");
+            }
+        } else {
+            printf("잘못된 입력입니다. 숫자를 입력하세요.\n");
+            // 입력 버퍼 클리어
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF);
+        }
+    }
     
     printf("격자 크기: %d x %d\n", width, height);
     
@@ -157,8 +181,12 @@ void CreateCubeGrid(int width, int height)
             
             // 스케일 애니메이션 설정
             cube.currentScale = 1.0f;           // 초기 스케일
+            cube.baseScale = 1.0f;              // 기준 스케일 초기화
             cube.isScaleAnimating = false;      // 초기에는 비활성
             cube.scaleAnimPhase = phaseDist(gen); // 랜덤 위상 (각 큐브마다 다른 타이밍)
+            
+            // 미로 관련 설정
+            cube.isDeleted = false;             // 초기에는 삭제되지 않음
             
             // 랜덤 색상 설정
             cube.color.r = colorDist(gen);
@@ -191,10 +219,20 @@ void UpDownCubeAnimation()
     UpDownAnimationActive = true;
     upDownAnimationTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
     
-    // 모든 큐브의 스케일 애니메이션 활성화
+    // 모든 큐브의 스케일 애니메이션 활성화 (삭제된 큐브 제외)
     for (int z = 0; z < gridHeight; z++) {
         for (int x = 0; x < gridWidth; x++) {
-            cubeGrid[z][x].isScaleAnimating = true;
+            Cube& cube = cubeGrid[z][x];
+            
+            // 삭제된 큐브는 애니메이션 적용하지 않음
+            if (cube.isDeleted) {
+                continue;
+            }
+            
+            cube.isScaleAnimating = true;
+            
+            // 현재 스케일을 기준 스케일로 저장 (애니메이션이 현재 높이에서 시작)
+            cube.baseScale = cube.currentScale;
         }
     }
     
@@ -205,12 +243,21 @@ void StopUpDownCubeAnimation()
 {
     UpDownAnimationActive = false;
     
-    // 모든 큐브의 스케일 애니메이션 비활성화 및 원래 크기로 복원
+    // 모든 큐브의 스케일 애니메이션 비활성화 및 원래 크기로 복원 (삭제된 큐브 제외)
     for (int z = 0; z < gridHeight; z++) {
         for (int x = 0; x < gridWidth; x++) {
             Cube& cube = cubeGrid[z][x];
+            
+            // 삭제된 큐브는 처리하지 않음
+            if (cube.isDeleted) {
+                continue;
+            }
+            
             cube.isScaleAnimating = false;
+            cube.currentScale = 1.0f;
+            cube.baseScale = 1.0f;
             // Y 위치를 원래 높이의 절반으로 복원 (바닥 기준)
+            cube.position.y = cube.originalHeight * 0.5f;
         }
     }
     
@@ -227,14 +274,25 @@ void UpdateUpDownAnimation(float currentTime)
         for (int x = 0; x < gridWidth; x++) {
             Cube& cube = cubeGrid[z][x];
             
+            // 삭제된 큐브는 애니메이션 적용하지 않음
+            if (cube.isDeleted) {
+                continue;
+            }
+            
             if (cube.isScaleAnimating) {
                 // 사인파를 이용한 부드러운 스케일 변화
                 float animSpeed = 2.0f;  // 애니메이션 속도
-                float scaleAmount = 0.5f; // 스케일 변화량 (0.5 ~ 1.5 범위)
+                float scaleAmount = 0.5f; // 스케일 변화량 (±0.5 범위)
                 
                 // 각 큐브마다 다른 위상으로 사인파 계산
                 float sineValue = sin(elapsedTime * animSpeed + cube.scaleAnimPhase);
-                cube.currentScale = 1.0f + scaleAmount * sineValue;
+                
+                // 기준 스케일에서 사인파 변화 적용
+                cube.currentScale = cube.baseScale + scaleAmount * sineValue;
+                
+                // 최소/최대 스케일 제한 (0.3배 ~ 2.0배)
+                if (cube.currentScale < 0.3f) cube.currentScale = 0.3f;
+                if (cube.currentScale > 2.0f) cube.currentScale = 2.0f;
                 
                 // 바닥 기준으로 Y 위치 조정 (큐브 바닥이 항상 바닥에 닿도록)
                 float scaledHeight = cube.originalHeight * cube.currentScale;
@@ -295,6 +353,16 @@ void UpdateCubeAnimations(float currentTime)
 
 void DrawCube(const Cube& cube, const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation)
 {
+    // 삭제된 큐브는 렌더링하지 않음 (미로에서 삭제된 경우)
+    if (cube.isDeleted) {
+        return;
+    }
+    
+    // 스케일이 0이면 큐브를 렌더링하지 않음 (삭제된 것으로 처리)
+    if (cube.currentScale <= 0.0f) {
+        return;
+    }
+
     glBindVertexArray(VAO_cube);
 
     // 모델 행렬 생성 (위치, X/Z 크기, 높이 적용)
@@ -336,6 +404,11 @@ void ToggleHeightNormalization()
     for (int z = 0; z < gridHeight; z++) {
         for (int x = 0; x < gridWidth; x++) {
             Cube& cube = cubeGrid[z][x];
+            
+            // 삭제된 큐브는 처리하지 않음
+            if (cube.isDeleted) {
+                continue;
+            }
             
             if (heightNormalized) {
                 // 높이를 1.0f로 평준화

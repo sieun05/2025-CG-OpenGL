@@ -21,6 +21,9 @@ struct Cube {
 	float baseScale;		// 애니메이션 시작 시의 기준 스케일
 	bool isScaleAnimating;	// 스케일 애니메이션 중인지 여부
 	float scaleAnimPhase;	// 애니메이션 위상 (사인파용)
+	
+	// 미로 관련 변수
+	bool isDeleted;			// 미로에서 삭제된 큐브인지 여부
 };
 
 // 큐브 관련 전역 변수
