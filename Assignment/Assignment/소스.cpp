@@ -126,12 +126,12 @@ void main(int argc, char** argv)
 	printf("m: 큐브 위아래 스케일 애니메이션 시작\n");
 	printf("M: 큐브 위아래 스케일 애니메이션 정지\n");
 	printf("v: 모든 큐브 높이 1.0f로 평준화 / 원래 높이로 복원\n");
-	printf("y: 카메라 Y축 양의 방향 회전 시작/정지 (3인칭 모드만)\n");
-	printf("Y: 카메라 Y축 음의 방향 회전 시작/정지 (3인칭 모드만)\n");
+	printf("y: 카메라 Y축 양의 방향 회전 시작/정지\n");
+	printf("Y: 카메라 Y축 음의 방향 회전 시작/정지\n");
 	printf("O: 직교 투영\n");
 	printf("P: 원근 투영\n");
 	printf("Z/z: 카메라 거리 조절 (3인칭 모드만)\n");
-	printf("Q: 종료\n");
+	printf("Q/q: 종료\n");
 	printf("=============================\n");
 	
 	glutMainLoop();
@@ -154,7 +154,7 @@ void InitBuffer()
 	glEnable(GL_DEPTH_TEST); // 깊이버퍼 활성화
 	glEnable(GL_CULL_FACE); // Face culling 활성화
 
-	InitAxesBuffer();
+	//InitAxesBuffer();
 	InitGroundBuffer();
 	InitCubeBuffer();
 	InitPlayer();  // 플레이어 초기화
@@ -211,7 +211,7 @@ GLvoid drawScene()
 	UpdateCubeAnimations(currentTime);
 
 	// === 메인 뷰 렌더링 ===
-	DrawAxes(gView, gProjection, uMVP_loc);  // 좌표축 그리기
+	//DrawAxes(gView, gProjection, uMVP_loc);  // 좌표축 그리기
 
 	//--- 모델 그리기
 	DrawGround(gView, gProjection, uMVP_loc);
