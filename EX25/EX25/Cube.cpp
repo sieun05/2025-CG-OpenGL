@@ -2,11 +2,12 @@
 
 // 정육면체 관련 전역 변수 정의
 GLuint VAO_cube = 0;
-GLuint VBO_cube[2] = { 0, };
+GLuint VBO_cube[3] = { 0, };  // [0]: 위치, [1]: 색상, [2]: 법선
 GLuint EBO_cube = 0;
 
 //정육면체 그리기 T/F, 어떤 면 그릴지
 bool drawCube = true;
+
 
 void InitCubeBuffer() {
     const float size = 0.5f; // 정육면체 한 변의 절반 길이 (중심이 원점)
@@ -90,6 +91,45 @@ void InitCubeBuffer() {
         0.0f, 1.0f, 1.0f   // 23
     };
 
+    // 각 면의 법선 벡터 (바깥쪽을 향하도록)
+    const float cube_normals[] = {
+        // 앞면 (z = +1)
+         0.0f,  0.0f,  1.0f,  // 0
+         0.0f,  0.0f,  1.0f,  // 1
+         0.0f,  0.0f,  1.0f,  // 2
+         0.0f,  0.0f,  1.0f,  // 3
+
+        // 뒷면 (z = -1)
+         0.0f,  0.0f, -1.0f,  // 4
+         0.0f,  0.0f, -1.0f,  // 5
+         0.0f,  0.0f, -1.0f,  // 6
+         0.0f,  0.0f, -1.0f,  // 7
+
+        // 왼쪽면 (x = -1)
+        -1.0f,  0.0f,  0.0f,  // 8
+        -1.0f,  0.0f,  0.0f,  // 9
+        -1.0f,  0.0f,  0.0f,  // 10
+        -1.0f,  0.0f,  0.0f,  // 11
+
+        // 오른쪽면 (x = +1)
+         1.0f,  0.0f,  0.0f,  // 12
+         1.0f,  0.0f,  0.0f,  // 13
+         1.0f,  0.0f,  0.0f,  // 14
+         1.0f,  0.0f,  0.0f,  // 15
+
+        // 아래면 (y = -1)
+         0.0f, -1.0f,  0.0f,  // 16
+         0.0f, -1.0f,  0.0f,  // 17
+         0.0f, -1.0f,  0.0f,  // 18
+         0.0f, -1.0f,  0.0f,  // 19
+
+        // 위면 (y = +1)
+         0.0f,  1.0f,  0.0f,  // 20
+         0.0f,  1.0f,  0.0f,  // 21
+         0.0f,  1.0f,  0.0f,  // 22
+         0.0f,  1.0f,  0.0f   // 23
+    };
+
     // 인덱스 배열 (모든 면이 반시계방향으로 정의됨)
     const unsigned int cube_indices[] = {
         // 앞면 (Red) - 반시계방향
@@ -115,8 +155,8 @@ void InitCubeBuffer() {
     glGenVertexArrays(1, &VAO_cube);
     glBindVertexArray(VAO_cube);
 
-    // VBO 생성
-    glGenBuffers(2, VBO_cube);
+    // VBO 생성 (3개: 위치, 색상, 법선)
+    glGenBuffers(3, VBO_cube);
 
     // 정점 위치 데이터
     glBindBuffer(GL_ARRAY_BUFFER, VBO_cube[0]);
@@ -129,6 +169,12 @@ void InitCubeBuffer() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(cube_colors), cube_colors, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    // 정점 법선 데이터
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_cube[2]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_normals), cube_normals, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
     // EBO (인덱스 버퍼) 설정
     glGenBuffers(1, &EBO_cube);
@@ -143,12 +189,6 @@ void InitCubeBuffer() {
 void DrawCube(const glm::mat4& baseModel, const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation)
 {
     glBindVertexArray(VAO_cube);
-    
-    // 각 면을 개별적으로 그리기
-    
-    glm::mat4 uMVP = projection * view * baseModel;
-    glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(uMVP));
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0); // 36개 인덱스 (12개 삼각형)
     glBindVertexArray(0);
 }

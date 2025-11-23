@@ -9,7 +9,6 @@ GLuint EBO_Pyramid = 0;
 // 사각뿔 그리기 제어 변수
 bool drawPyramid = false;
 
-
 void InitPyramidBuffer()
 {
     const float size = 0.5f; // 사각뿔 크기 조절용 변수
@@ -113,12 +112,7 @@ void InitPyramidBuffer()
 void DrawPyramid(const glm::mat4& baseModel, const glm::mat4& view, const glm::mat4& projection, GLint mvpLocation)
 {
     glBindVertexArray(VAO_Pyramid);
-    
-    // 1. 밑면 그리기 (항상 고정)
-    glm::mat4 uMVP = projection * view * baseModel;
-    glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(uMVP));
-    glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0);
-
+    glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0); // 36개 인덱스 (12개 삼각형)
 
     glBindVertexArray(0);
 }
