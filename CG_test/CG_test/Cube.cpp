@@ -256,12 +256,14 @@ void Cube::DrawCube(glm::mat4 gProjection, glm::mat4 gView, GLuint uMVP_loc)
 
 void Cube::UpdateAnimation()
 {
-    if (this->animate[0]) // x축
-        xAngle += 1.0f;
-    if (this->animate[1]) // y축
-        yAngle += 1.0f;
-    if (this->animate[2]) // z축
-        zAngle += 1.0f;
+    //if (this->animate[0]) // x축
+    //    xAngle += 1.0f;
+    //if (this->animate[1]) // y축
+    //    yAngle += 1.0f;
+    //if (this->animate[2]) // z축
+    //    zAngle += 1.0f;
 
 	obj_yAngle += 2.0f;
+
+    this->position.y += 0.005f;
 }
